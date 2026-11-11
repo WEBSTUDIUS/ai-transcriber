@@ -50,3 +50,6 @@ pyproject.gpu.toml
 .coverage
 htmlcov/
 .ruff_cache/
+
+# Generated CLI summaries can contain private meeting content.
+SUMMARY_OF_*.md

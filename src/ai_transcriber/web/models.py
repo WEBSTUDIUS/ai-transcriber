@@ -4,6 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from ai_transcriber.utils.redaction import redact_diagnostic
+
 
 @dataclass
 class JobOptions:
@@ -48,7 +50,7 @@ class Job:
     send_result: Any = None
 
     def log(self, message: str) -> None:
-        self.logs.append(message)
+        self.logs.append(redact_diagnostic(message))
         # Не даём логам раздувать RAM: держим хвост.
         if len(self.logs) > 500:
             del self.logs[: len(self.logs) - 500]

@@ -5,7 +5,7 @@ from pathlib import Path
 import time
 import typer
 import tempfile
-from typing import Any, Callable
+from typing import Callable
 
 from ai_transcriber.exporters.json_exporter import JsonExporter
 from ai_transcriber.exporters.txt_exporter import TxtExporter
@@ -26,6 +26,8 @@ from ai_transcriber import __version__
 from ai_transcriber.doctor.service import run_checks
 from ai_transcriber.doctor.renderer import render
 from ai_transcriber.llm.client import LMStudioClient
+from ai_transcriber.llm.errors import endpoint_unavailable
+from ai_transcriber.utils.redaction import redact_diagnostic
 from ai_transcriber.llm.local_server import LocalLLMServer
 from ai_transcriber.transcriber.models import AVAILABLE_MODELS, AVAILABLE_PROMPTS, Transcript, AVAILABLE_SEND_POINTS
 
@@ -111,17 +113,15 @@ def resolve_llm(
     """
     client = LMStudioClient(base_url=DEFAULT_LMSTUDIO_BASE_URL)
 
-    if pinned:
-        client.model = pinned
-        return client, _noop_cleanup
-
     try:
         models = client.list_models()
-    except Exception:
-        models = []
-
-    if models:
-        client.model = choose_llm_interactively(console, models)
+    except Exception as exc:
+        if not endpoint_unavailable(exc):
+            raise
+    else:
+        if not models:
+            raise ValueError("LLM server is reachable but has no models loaded")
+        client.model = pinned or choose_llm_interactively(console, models)
         return client, _noop_cleanup
 
     console.print(
@@ -152,7 +152,7 @@ def doctor() -> None:
         results = run_checks()
         render(results)
     except Exception as e:
-        console.print(f"[red]Error running checks: {e}[/red]")
+        console.print(f"Error running checks: {redact_diagnostic(e)}", style="red", markup=False)
         raise typer.Exit(1)
 
 
@@ -254,15 +254,15 @@ def transcribe(
         duration = get_audio_duration(str(file))
     except Exception:
         duration = None
-    service = get_transcriber_service(
-        model, language, gpu, compute_type, duration_seconds=duration,
-    )
-
+    service = None
     try:
+        service = get_transcriber_service(
+            model, language, gpu, compute_type, duration_seconds=duration,
+        )
         start_time = time.perf_counter()
         transcript = transcribe_audio(file, normalize, service)
         if unload_model:
-            del service
+            service = None
             from ai_transcriber.utils.runtime import clear_asr_models
             clear_asr_models()
         json_output = str(base_output.with_suffix(".json"))
@@ -302,14 +302,17 @@ def transcribe(
             console.print("[red]ERROR: File NOT created[/red]")
             raise typer.Exit(1)
 
-        # MEMORY CLEANUP
-        cleanup_memory()
-
     except typer.Exit:
         raise
     except Exception as e:
-        console.print(f"[red]Error during transcription: {e}[/red]")
-        raise typer.Exit(1)
+        console.print(f"Error during transcription: {redact_diagnostic(e)}", style="red", markup=False)
+        raise typer.Exit(1) from None
+    finally:
+        service = None
+        if unload_model:
+            from ai_transcriber.utils.runtime import clear_asr_models
+            clear_asr_models()
+        cleanup_memory()
 
 
 def get_transcriber_service(
@@ -467,8 +470,8 @@ def summarize(
     try:
         return _run_summarize(file, prompt, send, llm, unload_model)
     except Exception as e:
-        console.print(f"[red]Error during summarization: {e}[/red]")
-        raise typer.Exit(1)
+        console.print(f"Error during summarization: {redact_diagnostic(e)}", style="red", markup=False)
+        raise typer.Exit(1) from None
 
 
 @app.command()

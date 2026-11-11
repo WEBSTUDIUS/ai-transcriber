@@ -1,11 +1,12 @@
 
 from __future__ import annotations
 
-import re
 import threading
 import uuid
 from dataclasses import fields
 from typing import Callable
+
+from ai_transcriber.utils.redaction import redact_diagnostic
 
 from .models import Job
 
@@ -88,7 +89,7 @@ class JobManager:
                     current_step="Completed",
                 )
             except Exception as exc:
-                error = re.sub(r"https?://[^\s]+", "[endpoint redacted]", str(exc))
+                error = redact_diagnostic(exc)
                 self.log(job_id, f"ERROR: {error}")
                 self.update(
                     job_id,

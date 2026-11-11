@@ -10,6 +10,7 @@ from ai_transcriber.exporters.json_exporter import JsonExporter
 from ai_transcriber.exporters.txt_exporter import TxtExporter, transcript_to_text
 from ai_transcriber.exporters.webhook_exporter import create_smart_process_item
 from ai_transcriber.llm.client import LMStudioClient
+from ai_transcriber.llm.errors import endpoint_unavailable
 from ai_transcriber.llm.local_server import get_shared_server, stop_shared_server
 from ai_transcriber.transcriber.models import Transcript
 from ai_transcriber.utils.runtime import (
@@ -190,6 +191,8 @@ def _summarize_with_llm(
         _emit(job, f"Summary generated with {_redact_url(options.llm_endpoint)}")
         return summary
     except Exception as exc:
+        if not endpoint_unavailable(exc):
+            raise
         _emit(job, f"LLM endpoint {_redact_url(options.llm_endpoint)} failed: {type(exc).__name__}")
         _emit(job, "Selecting local summary model for available RAM...")
         _set(job, "Preparing bundled LLM (download if needed)", 86)

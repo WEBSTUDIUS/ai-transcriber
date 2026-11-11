@@ -321,7 +321,7 @@ MPS uses the Mac's **unified memory**, which is shared with the OS — long file
 ### Getting the Hugging Face token
 
 1. Create an account at <https://huggingface.co>.
-2. Accept the terms for the gated diarization model: <https://huggingface.co/pyannote/speaker-diarization-3.1>.
+2. Accept the terms for the gated diarization model: <https://huggingface.co/pyannote/speaker-diarization-community-1>.
 3. Create a read token at <https://huggingface.co/settings/tokens> and set it as `HF_TOKEN` in `.env`.
 
 ---
@@ -354,11 +354,16 @@ ai-transcriber summarize meeting.txt --llm qwen/qwen3.5-9b
 
 ### Bundled fallback (no LM Studio)
 
-If LM Studio is not running (or the endpoint is unreachable), the CLI **and the Web UI** **automatically**:
+If the LLM endpoint cannot be reached, times out, or returns HTTP 502/503/504, the CLI **and the Web UI** **automatically**:
 
 1. Download the llama.cpp prebuilt binary for your platform (GitHub releases).
 2. Download **Qwen3-4B-Instruct-2507** GGUF (`Qwen3-4B-Instruct-2507-Q4_K_M.gguf`, ~2.5 GB) from Hugging Face.
 3. Start `llama-server` locally with a **context window selected by the RAM policy** and use it as the endpoint.
+
+Authentication failures (401/403), rate limits (429), invalid requests/model IDs,
+empty model lists and empty/truncated completions are reported directly. They
+do not trigger local downloads. A pinned `--llm` skips the interactive model
+picker, but still checks endpoint availability before selecting a fallback.
 
 Both downloads happen once and are cached in `LLAMA_CACHE_DIR` (`~/.cache/ai-transcriber`). Downloads can be overridden with `LLAMA_MODEL_REPO`, `LLAMA_MODEL_FILE`, `LLAMA_PORT`, `LLAMA_CTX`, `LLAMA_NGPU` (see the [Configuration table](#configuration)).
 
@@ -448,7 +453,7 @@ data/                        # runtime data (uploads, outputs, config) — git-i
 | Symptom | Fix |
 |---|---|
 | `MPS backend out of memory` | Use `auto`/`cpu` for long files, keep diarization off, set `MPS_LONG_FILE_THRESHOLD_SECONDS`, or pick **CPU + MPS** only for short files. |
-| WhisperX backend error / diarization skips silently | `HF_TOKEN` missing or terms not accepted for `pyannote/speaker-diarization-3.1`. |
+| WhisperX backend error / diarization skips silently | `HF_TOKEN` missing or terms not accepted for `pyannote/speaker-diarization-community-1`. |
 | `ffmpeg` / `ffprobe` not found | Install FFmpeg or set `FFMPEG_DLL_PATH` (Windows). |
 | Summary step fails | Start LM Studio (or point `LLM endpoint` at your own OpenAI-compatible server). |
 | `torchcodec is not installed correctly` warning | Harmless; audio is decoded by FFmpeg instead. |
@@ -481,3 +486,9 @@ python -m pytest             # unit tests (install with: uv sync --extra test)
 ---
 
 <p align="center">Built with faster-whisper, WhisperX, FastAPI, Typer and LM Studio.</p>
+
+## Additional validation
+
+Manual examples accepting your own file are in [`examples/`](examples/README.md).
+See [`docs/VALIDATION.md`](docs/VALIDATION.md) for offline ASR checks, package
+installation coverage and the limits of the long-file fixture.
