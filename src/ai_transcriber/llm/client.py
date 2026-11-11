@@ -131,11 +131,13 @@ class LMStudioClient:
             ],
         )
 
+        if not getattr(response, "choices", None):
+            raise ValueError("LLM returned no completion choices")
         choice = response.choices[0]
         if choice.finish_reason == "length":
             raise ValueError("Summary reached the output token limit; use a shorter transcript or larger output budget")
-        content = choice.message.content
-        if not content or not content.strip():
+        content = getattr(getattr(choice, "message", None), "content", None)
+        if not isinstance(content, str) or not content.strip():
             raise ValueError("LLM returned an empty summary")
         return content
 

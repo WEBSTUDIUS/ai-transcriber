@@ -48,6 +48,15 @@ def main(ctx: typer.Context) -> None:
         console.print("Use --help for available commands.")
 
 
+def resolve_send_endpoint(preset: str) -> str:
+    if preset not in AVAILABLE_SEND_POINTS:
+        raise typer.BadParameter(f"Unknown send preset: {preset}")
+    endpoint = os.getenv(f"WEBHOOK_{preset.upper()}", "").strip()
+    if not endpoint:
+        raise typer.BadParameter(f"Set WEBHOOK_{preset.upper()} before sending")
+    return endpoint
+
+
 def _noop_cleanup() -> None:
     return None
 
@@ -281,7 +290,7 @@ def transcribe(
                     filename = filepath.stem
 
                     result = create_smart_process_item(
-                        webhook_url=os.getenv(f"WEBHOOK_{send.upper()}") or None,
+                        webhook_url=resolve_send_endpoint(send),
                         title=filename,
                         summary_file=(str(summaryRes)),
                         file=(str(path)),
@@ -366,6 +375,8 @@ def _run_summarize(
 ) -> Path | None:
     """Core summarize logic shared by the `summarize` command and `transcribe`."""
     console.print(f"[cyan]Reading transcript:[/cyan] {file}")
+    if send:
+        resolve_send_endpoint(send)
     text = file.read_text(encoding="utf-8")
 
     safe_stem = "".join(
@@ -404,7 +415,7 @@ def _run_summarize(
         filename = filepath.stem
 
         result = create_smart_process_item(
-            webhook_url=os.getenv(f"WEBHOOK_{send.upper()}") or None,
+            webhook_url=resolve_send_endpoint(send),
             title=filename,
             summary_file=(str(summary_output)),
             file=(str(file)),

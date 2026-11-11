@@ -144,6 +144,7 @@ WEBHOOK_ENV_VARS = {
     "it_task": "WEBHOOK_IT_TASK",
     "hr": "WEBHOOK_HR",
     "call_track": "WEBHOOK_CALL_TRACK",
+    "custom_webhook": "WEBHOOK_CUSTOM",
 }
 
 
@@ -182,15 +183,25 @@ def load_config() -> dict:
     try:
         data = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
         config = {**DEFAULT_CONFIG, **_sanitize_config_payload(data)}
-        for name, env_var in WEBHOOK_ENV_VARS.items():
-            if config["send_endpoint"] and config["send_endpoint"] == os.getenv(env_var):
-                config["send_endpoint"] = name
+        config["send_endpoint"] = _persisted_send_endpoint(config["send_endpoint"])
         return config
     except Exception:
         return DEFAULT_CONFIG.copy()
 
 
+def _persisted_send_endpoint(endpoint: str) -> str:
+    endpoint = endpoint.strip()
+    if endpoint in WEBHOOK_ENV_VARS:
+        return endpoint
+    for name, env_var in WEBHOOK_ENV_VARS.items():
+        if endpoint and endpoint == os.getenv(env_var, "").strip():
+            return name
+    # Manual URLs are valid for the current job, but never saved to preferences.
+    return ""
+
+
 def save_config(data: dict) -> None:
+    data = {**data, "send_endpoint": _persisted_send_endpoint(data.get("send_endpoint", ""))}
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     # Unique temporary files avoid collisions between concurrent saves.
     with _config_lock:

@@ -7,7 +7,7 @@ from typing import Callable
 from ai_transcriber.audio.processor import normalize_audio, get_audio_duration
 from ai_transcriber.config import HF_TOKEN, LLAMA_CTX
 from ai_transcriber.exporters.json_exporter import JsonExporter
-from ai_transcriber.exporters.txt_exporter import TxtExporter
+from ai_transcriber.exporters.txt_exporter import TxtExporter, transcript_to_text
 from ai_transcriber.exporters.webhook_exporter import create_smart_process_item
 from ai_transcriber.llm.client import LMStudioClient
 from ai_transcriber.llm.local_server import get_shared_server, stop_shared_server
@@ -32,14 +32,7 @@ def _set(job: Job, step: str, progress: int) -> None:
 
 
 def _transcript_to_text(transcript: Transcript) -> str:
-    lines = []
-    for segment in transcript.segments:
-        speaker = f"{segment.speaker}: " if segment.speaker else ""
-        lines.append(
-            f"[{segment.start:.2f} - {segment.end:.2f}] "
-            f"{speaker}{segment.text}"
-        )
-    return "\n".join(lines)
+    return transcript_to_text(transcript)
 
 
 def _whisperx_service(

@@ -15,5 +15,5 @@ jobs:
       - name: Scan reachable history for secrets
         run: python scripts/check_secrets.py --history HEAD
       - name: Install lightweight test dependencies (ML engines mocked)
-        run: pip install pytest fastapi httpx python-multipart jinja2 requests psutil rich openai python-dotenv
+        run: pip install pytest fastapi httpx python-multipart jinja2 requests psutil rich typer openai python-dotenv
       - run: python -m pytest -q

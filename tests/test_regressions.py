@@ -264,3 +264,93 @@ def test_llm_model_discovery_uses_auth(web, monkeypatch):
     monkeypatch.setattr('ai_transcriber.llm.client.httpx.Client', FakeHTTP)
     assert client.list_models() == ['model']
     assert captured['headers']['Authorization'] == 'Bearer unit-test-placeholder'
+
+
+@pytest.mark.parametrize('choices', [[], None])
+def test_missing_llm_choices_is_reported(web, choices):
+    from ai_transcriber.llm.client import LMStudioClient
+    client = LMStudioClient(model='test')
+    client.client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(
+        create=lambda **kw: SimpleNamespace(choices=choices))))
+    with pytest.raises(ValueError, match='no completion choices'):
+        client.summarize('test', 'meeting')
+
+
+@pytest.mark.parametrize('content', [None, '', '   '])
+def test_missing_llm_content_is_reported(web, content):
+    from ai_transcriber.llm.client import LMStudioClient
+    client = LMStudioClient(model='test')
+    client.client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(
+        create=lambda **kw: SimpleNamespace(choices=[SimpleNamespace(
+            finish_reason='stop', message=SimpleNamespace(content=content))]))))
+    with pytest.raises(ValueError, match='empty summary'):
+        client.summarize('test', 'meeting')
+
+
+def test_txt_format_is_shared_and_supports_hours(web, tmp_path):
+    from ai_transcriber.transcriber.models import Transcript, TranscriptSegment
+    from ai_transcriber.exporters.txt_exporter import TxtExporter, transcript_to_text
+    from ai_transcriber.writers.txt import write_txt
+    from ai_transcriber.web.processor import _transcript_to_text
+    transcript = Transcript(language='en', duration=3662, segments=[
+        TranscriptSegment(start=3661.125, end=3662.5, text='Hello', speaker='Alice'),
+        TranscriptSegment(start=3662.5, end=3663, text='World'),
+    ])
+    expected = '[01:01:01.125 - 01:01:02.500] Alice: Hello\n[01:01:02.500 - 01:01:03.000] World'
+    assert transcript_to_text(transcript) == _transcript_to_text(transcript) == expected
+    assert TxtExporter().export(transcript, str(tmp_path/'nested'/'new.txt')).read_text() == expected+'\n'
+    assert write_txt(transcript, str(tmp_path/'legacy.txt')).read_text() == expected+'\n'
+
+
+def test_manual_webhook_is_not_persisted(web):
+    module, client = web
+    endpoint = 'https://portal.example/rest/1/' + 'b'*16 + '/'
+    client.post('/api/config', json={'send_endpoint': endpoint})
+    assert endpoint not in module.CONFIG_FILE.read_text()
+    assert client.get('/api/config').json()['send_endpoint'] == ''
+
+
+def test_named_webhook_resolves_server_side(web, monkeypatch):
+    module, client = web
+    endpoint = 'https://portal.example/rest/1/' + 'c'*16 + '/'
+    monkeypatch.setenv('WEBHOOK_CUSTOM', endpoint)
+    seen = {}
+    def process(job, input_path, output_dir, options):
+        seen['endpoint'] = options.send_endpoint
+    monkeypatch.setattr(module, 'process_job', process)
+    response = client.post('/api/jobs', files={'file': ('note.txt', b'hello')},
+                           data={'send': 'true', 'send_endpoint': 'custom_webhook'})
+    assert response.status_code == 200
+    deadline = time.monotonic()+3
+    while not seen and time.monotonic() < deadline:
+        time.sleep(.01)
+    assert seen['endpoint'] == endpoint
+    assert endpoint not in module.CONFIG_FILE.read_text()
+
+
+@pytest.mark.parametrize('preset', ['it_task', 'hr', 'call_track'])
+def test_cli_send_uses_selected_preset_and_rejects_missing(web, monkeypatch, preset):
+    import typer
+    from ai_transcriber.cli import resolve_send_endpoint
+    monkeypatch.setenv('WEBHOOK_URL', 'https://fallback.example/')
+    monkeypatch.setenv('WEBHOOK_IT_TASK', 'https://it.example/')
+    variable = f'WEBHOOK_{preset.upper()}'
+    monkeypatch.setenv(variable, f'https://{preset}.example/')
+    assert resolve_send_endpoint(preset) == f'https://{preset}.example/'
+    monkeypatch.delenv(variable)
+    with pytest.raises(typer.BadParameter, match=variable):
+        resolve_send_endpoint(preset)
+
+
+def test_config_write_failure_keeps_previous_file(web, monkeypatch):
+    module, _ = web
+    module.save_config({**module.DEFAULT_CONFIG, 'language': 'ru'})
+    previous = module.CONFIG_FILE.read_bytes()
+    def fail(data, stream, **kw):
+        stream.write('{"partial":')
+        raise OSError('write interrupted')
+    monkeypatch.setattr(module.json, 'dump', fail)
+    with pytest.raises(OSError, match='write interrupted'):
+        module.save_config({**module.DEFAULT_CONFIG, 'language': 'en'})
+    assert module.CONFIG_FILE.read_bytes() == previous
+    assert not list(module.DATA_DIR.glob('.web-config-*.tmp'))

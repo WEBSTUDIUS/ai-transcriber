@@ -104,7 +104,7 @@ python -m pip install --upgrade pip
 python -m pip install -e .
 ```
 
-Windows scripts are also provided in [`scripts/`](scripts): `setup_cpu.ps1` and `setup_gpu.ps1`.
+Windows scripts are also provided in [`scripts/`](scripts): `setup_cpu.ps1` and `setup_gpu.ps1`. The CPU script installs CPU torch wheels after syncing; a subsequent plain `uv sync` restores the configured Windows CUDA source, so rerun the CPU script when updating that environment.
 
 ### 3. Install FFmpeg
 
@@ -417,7 +417,7 @@ Replace `0` with your portal's entity/category IDs. Map custom fields to
 
 | File | Content |
 |---|---|
-| `<name>.txt` | Plain text, one segment per line with timestamps: `[00:01.00 - 00:05.00] Speaker1: text`. |
+| `<name>.txt` | Plain text, one segment per line with timestamps: `[00:00:01.000 - 00:00:05.000] Speaker1: text`. |
 | `<name>.json` | Structured transcript (language, duration, segments with words). |
 | `SUMMARY_OF_<name>.md` | LLM summary with a source header. |
 
@@ -466,7 +466,7 @@ data/                        # runtime data (uploads, outputs, config) — git-i
 - Rotate HF/webhook/API credentials if they have been published or shared.
 - Activate the local secret check after cloning: `git config core.hooksPath .githooks`.
 - Run `python3 scripts/check_secrets.py` to scan staged files, or add `--history HEAD` to scan reachable history. The check rejects environment/private-key files and common token formats without printing their values. GitHub Actions also runs it; it is a heuristic, so review diffs before publishing.
-- Preset webhook secrets stay server-side. Custom webhook URLs are saved in ignored `data/web_config.json`, created with owner-only permissions on POSIX.
+- Preset webhook secrets stay server-side. `data/web_config.json` never contains webhook URLs. Manual URLs are used for the current job only; put reusable URLs in `.env` (`WEBHOOK_CUSTOM` or the other presets). Preferences are created with owner-only permissions on POSIX.
 - Browser requests from foreign origins are rejected. The Web UI still has no user authentication; keep it on a trusted network.
 
 ---
