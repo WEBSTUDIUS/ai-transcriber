@@ -50,3 +50,30 @@ pyproject.gpu.toml
 .coverage
 htmlcov/
 .ruff_cache/
+
+# Locally generated audio/video and transcript formats
+*.m4a
+*.aac
+*.flac
+*.ogg
+*.opus
+*.wma
+*.aiff
+*.caf
+*.mov
+*.mkv
+*.avi
+*.webm
+*.srt
+*.vtt
+
+# Downloaded AI model weights and runtime databases
+*.gguf
+*.safetensors
+*.ckpt
+*.pth
+*.pt
+*.onnx
+*.sqlite
+*.sqlite3
+*.db
