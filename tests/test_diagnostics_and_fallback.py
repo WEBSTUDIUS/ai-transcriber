@@ -155,3 +155,15 @@ def test_cli_preserves_dots_in_source_name(web, monkeypatch, tmp_path):
     assert (tmp_path / 'meeting.2026.11.txt').is_file()
     assert (tmp_path / 'meeting.2026.11.json').is_file()
     assert not (tmp_path / 'meeting.2026.txt').exists()
+
+
+def test_remote_weight_conversion_disabled_by_default(web, monkeypatch):
+    import importlib
+    import os
+    import ai_transcriber.config as config
+    monkeypatch.delenv('DISABLE_SAFETENSORS_CONVERSION', raising=False)
+    importlib.reload(config)
+    assert os.environ['DISABLE_SAFETENSORS_CONVERSION'] == 'true'
+    monkeypatch.setenv('DISABLE_SAFETENSORS_CONVERSION', 'false')
+    importlib.reload(config)
+    assert os.environ['DISABLE_SAFETENSORS_CONVERSION'] == 'false'

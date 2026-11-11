@@ -6,6 +6,11 @@ from dotenv import load_dotenv
 dotenv_path = Path(__file__).resolve().parent.parent.parent / ".env"
 load_dotenv(dotenv_path)
 
+# Loading an existing .bin alignment model must not start a non-daemon
+# Transformers conversion job against an external Hugging Face service.
+# Existing safetensors files remain preferred; model downloads still work.
+os.environ.setdefault("DISABLE_SAFETENSORS_CONVERSION", "true")
+
 if os.name == "nt":
     ffmpeg_path = os.getenv("FFMPEG_DLL_PATH", r"C:\ffmpeg7\bin")
     if Path(ffmpeg_path).exists():
