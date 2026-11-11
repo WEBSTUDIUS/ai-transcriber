@@ -248,7 +248,7 @@ def transcribe(
     console.print(f"[cyan]Loading Whisper model:[/cyan] {model} (compute_type: {compute_type})")
 
     # --output задаёт базовый путь для .txt/.json (без него — рядом с исходником).
-    base_output = Path(output) if output is not None else Path(file).with_suffix("")
+    base_output = Path(output) if output is not None else Path(file)
 
     try:
         duration = get_audio_duration(str(file))

@@ -34,7 +34,7 @@ an hour of continuous speech. Use a real long recording for that assessment.
 
 ## Local results (2026-11-11)
 
-- 72 unit/regression tests passed.
+- 73 unit/regression tests passed.
 - Real faster-whisper `small`, CPU/int8: 30-second clip, 12 segments, 11.14 s.
 - Long fixture: duration 3690 s, 16 segments, last segment starts at 3683.29 s;
   inference completed in 23.34 s.

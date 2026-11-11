@@ -138,3 +138,20 @@ def test_job_logs_redact_credentials_at_entry(monkeypatch):
     job.log(f'failed {secret} /rest/1/private-token/')
     assert secret not in job.logs[0]
     assert 'private-token' not in job.logs[0]
+
+
+def test_cli_preserves_dots_in_source_name(web, monkeypatch, tmp_path):
+    import ai_transcriber.cli as cli
+    from ai_transcriber.transcriber.models import Transcript, TranscriptSegment
+    transcript = Transcript(language='en', duration=1, segments=[
+        TranscriptSegment(start=0, end=1, text='hello')])
+    monkeypatch.setattr(cli, 'get_audio_duration', lambda *a: 1)
+    monkeypatch.setattr(cli, 'get_transcriber_service', lambda *a, **kw: Mock())
+    monkeypatch.setattr(cli, 'transcribe_audio', lambda *a: transcript)
+    audio = tmp_path / 'meeting.2026.11.wav'
+    audio.write_bytes(b'placeholder')
+    result = CliRunner().invoke(cli.app, ['transcribe', str(audio)])
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / 'meeting.2026.11.txt').is_file()
+    assert (tmp_path / 'meeting.2026.11.json').is_file()
+    assert not (tmp_path / 'meeting.2026.txt').exists()
