@@ -80,7 +80,7 @@ Existing `.txt` transcripts skip transcription and go straight to summary/send.
 ### 1. Clone the repository
 
 ```bash
-git clone <your-repo-url> ai-transcriber
+git clone https://github.com/WEBSTUDIUS/ai-transcriber.git
 cd ai-transcriber
 ```
 
