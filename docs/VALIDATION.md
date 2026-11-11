@@ -7,7 +7,7 @@ The suite covers the queue, uploads, persistence, exporters, secret redaction,
 model selection and LLM failure handling. ML engines are mocked in unit tests.
 
 GitHub Actions runs the lightweight suite and a separate locked installation
-on Linux, macOS and Windows. Installation jobs import the actual ML stacks and
+on Linux, macOS and Windows. Installation jobs import the actual ML stacks, including WhisperX alignment, and
 exercise the CLI. Windows additionally verifies the CUDA 12.8 wheel, runs the
 CPU setup script and checks that CPU torch/torchaudio/torchvision import.
 A hosted runner without an NVIDIA GPU cannot verify actual CUDA inference.
@@ -50,3 +50,11 @@ Private source recordings, transcripts, model weights and detailed local logs
 are intentionally excluded from version control. These checks do not establish
 speaker-count accuracy on labelled multi-speaker material or CUDA inference
 correctness on an NVIDIA machine.
+
+## Dependency regression caught by the real run
+
+The initial full WhisperX run failed in NLTK 3.10.1 when importing alignment
+from an in-project virtual environment. The dependency floor is now NLTK
+3.10.4, and the lock update changes only NLTK. This uses the upstream fix; no
+import-security checks are disabled in the application. See
+[NLTK's upstream correction](https://github.com/nltk/nltk/pull/3732).

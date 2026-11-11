@@ -12,6 +12,8 @@ dependencies = [
     "httpx",
     "openai>=2.46.0",
     "whisperx>=3.8.6",
+    # NLTK 3.10.1 breaks WhisperX alignment inside an in-project .venv.
+    "nltk>=3.10.4,<4",
     "torch==2.8.0",
     "torchvision==0.23.0",
     "torchaudio==2.8.0",

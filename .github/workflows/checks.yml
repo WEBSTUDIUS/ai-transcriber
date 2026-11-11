@@ -36,7 +36,7 @@ jobs:
         run: uv sync --locked --extra test --python 3.12
       - name: Import actual ML engines and check CLI
         run: |
-          uv run --no-sync python -c "import torch, whisperx, faster_whisper; from ai_transcriber.transcriber.whisperx_service import WhisperXTranscriber; print('torch:', torch.__version__, 'CUDA wheel:', torch.version.cuda)"
+          uv run --no-sync python -c "import torch, whisperx, faster_whisper; from ai_transcriber.transcriber.whisperx_service import WhisperXTranscriber; from whisperx.alignment import load_align_model; print('torch:', torch.__version__, 'CUDA wheel:', torch.version.cuda)"
           uv run --no-sync ai-transcriber --help
           uv run --no-sync python -m pytest -q
       - name: Verify Windows CUDA wheels
