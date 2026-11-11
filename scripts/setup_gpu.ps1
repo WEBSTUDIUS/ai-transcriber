@@ -1,0 +1,7 @@
+uv sync
+
+uv pip install `
+    torch==2.8.0+cu128 `
+    torchvision==0.23.0+cu128 `
+    torchaudio==2.8.0+cu128 `
+    --index-url https://download.pytorch.org/whl/cu128

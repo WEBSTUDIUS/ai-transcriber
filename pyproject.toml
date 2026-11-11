@@ -1,0 +1,58 @@
+[project]
+name = "ai-transcriber"
+version = "0.1.0"
+description = "Local AI audio transcription tool"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "faster-whisper>=1.2.1",
+    "rich",
+    "typer",
+    "httpx",
+    "openai>=2.46.0",
+    "whisperx>=3.8.6",
+    "torch==2.8.0",
+    "torchvision==0.23.0",
+    "torchaudio==2.8.0",
+    "python-dotenv>=1.0.0",
+    "uvicorn[standard]>=0.52.1",
+    "fastapi>=0.141.1",
+    "python-multipart>=0.0.32",
+    "jinja2>=3.1.6",
+    "requests>=2.34.2",
+    "psutil>=7.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.0"]
+
+[project.scripts]
+ai-transcriber = "ai_transcriber.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu128", marker = "sys_platform == 'win32' and platform_machine == 'AMD64'" },
+]
+torchvision = [
+    { index = "pytorch-cu128", marker = "sys_platform == 'win32' and platform_machine == 'AMD64'" },
+]
+torchaudio = [
+    { index = "pytorch-cu128", marker = "sys_platform == 'win32' and platform_machine == 'AMD64'" },
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai_transcriber"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

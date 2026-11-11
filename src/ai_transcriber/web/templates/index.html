@@ -1,0 +1,175 @@
+
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Transcriber</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="shell">
+    <header>
+        <div>
+            <h1>AI Transcriber</h1>
+            <p>Аудио в текст. Мысли — в порядок.</p>
+        </div>
+        <div id="statusBadge" class="badge">ГОТОВ К РАБОТЕ</div>
+    </header>
+
+    <main>
+        <section class="card">
+            <h2><em>01</em> Ваш исходный файл</h2>
+            <label id="dropzone" class="dropzone">
+                <input id="file" type="file" accept="audio/*,video/*,.txt,.md,.log,.mp3,.wav,.m4a,.mp4,.mov,.avi,.mkv,.flac,.ogg,.opus,.aac,.webm,.wma,.text">
+                <span id="fileLabel">Перетащите файл сюда<br><small>Аудио, видео или текст · до 2 ГБ · нажмите для выбора</small></span>
+            </label>
+        </section>
+
+        <section class="grid">
+            <div class="card">
+                <h2><em>02</em> Расшифровка</h2>
+
+                <label for="model">Модель распознавания</label>
+                <select id="model">
+                    {% for model in models %}
+                    {% set info = model_info.get(model, {}) %}
+                    <option value="{{ model }}" {% if config.get('model') == model %}selected{% endif %}>
+                        {{ model }}{% if info.hint %} — {{ info.hint }}{% endif %}{% if info.ram %} (RAM {{ info.ram }}){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+                <p class="hint" id="model_hint"></p>
+
+                <label for="backend">Движок</label>
+                <select id="backend">
+                    <option value="auto">Auto</option>
+                    <option value="whisperx">WhisperX</option>
+                    <option value="faster-whisper">faster-whisper</option>
+                </select>
+
+                <label for="device">Устройство</label>
+                <select id="device">
+                    {% for dev in devices %}
+                    <option value="{{ dev.value }}">{{ dev.label }}</option>
+                    {% endfor %}
+                </select>
+
+                <label for="language">Язык</label>
+                <input id="language" placeholder="Автоопределение или код языка, например ru">
+
+                <label for="compute_type">Точность вычислений</label>
+                <select id="compute_type">
+                    <option value="auto" {% if config.get('compute_type', 'auto') == 'auto' %}selected{% endif %}>auto (рекомендуется)</option>
+                    <option value="int8" {% if config.get('compute_type') == 'int8' %}selected{% endif %}>int8 — быстрее, меньше памяти (CPU)</option>
+                    <option value="int8_float32" {% if config.get('compute_type') == 'int8_float32' %}selected{% endif %}>int8_float32</option>
+                    <option value="float16" {% if config.get('compute_type') == 'float16' %}selected{% endif %}>float16 (CUDA)</option>
+                    <option value="float32" {% if config.get('compute_type') == 'float32' %}selected{% endif %}>float32 — медленнее, больше памяти</option>
+                </select>
+
+                <div class="checks">
+                    <label class="check">
+                        <input id="transcribe" type="checkbox">
+                        <span>Распознать речь</span>
+                    </label>
+
+                    <label class="check nested">
+                        <input id="diarization" type="checkbox">
+                        <span>Разделить по спикерам</span>
+                    </label>
+
+                    <label class="check nested">
+                        <input id="normalize" type="checkbox">
+                        <span>Выровнять громкость</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2><em>03</em> Главное из разговора</h2>
+
+                <label class="check">
+                    <input id="summary" type="checkbox">
+                    <span>Составить саммари</span>
+                </label>
+
+                <label for="summary_prompt_type">Сценарий саммари</label>
+                <select id="summary_prompt_type">
+                    {% for prompt in prompts %}
+                    <option value="{{ prompt }}">{{ prompt }}</option>
+                    {% endfor %}
+                    <option value="custom">custom</option>
+                </select>
+
+                <label for="custom_prompt">Своя инструкция</label>
+                <textarea id="custom_prompt" placeholder="Используется только для custom..."></textarea>
+
+                <div id="localModelPlan" class="alert info" aria-live="polite"></div>
+                <label for="llm_endpoint">LLM endpoint</label>
+                <input id="llm_endpoint" placeholder="http://127.0.0.1:1234/v1">
+
+                <label>Языковая модель</label>
+                <div class="llmRow">
+                    <select id="llm_model"></select>
+                    <button id="llm_refresh" type="button" title="Обновить список моделей">↻</button>
+                </div>
+                <input id="llm_model_custom" class="hidden"
+                       placeholder="Свой ID модели (если нет в списке)"
+                       autocomplete="off">
+                <div id="llm_model_alert" class="alert hidden"></div>
+
+                <div class="checks">
+                    <label class="check">
+                        <input id="unload_model" type="checkbox" checked>
+                        <span>Выгрузить модель после завершения</span>
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2><em>04</em> Интеграция с Bitrix24</h2>
+            <label class="check">
+                <input id="send" type="checkbox">
+                <span>Отправить результат в Bitrix24</span>
+            </label>
+
+            <label for="send_endpoint_preset">Endpoint</label>
+                <select id="send_endpoint_preset"></select>
+            <div id="send_endpoint_wrap" class="hidden">
+                <input id="send_endpoint" placeholder="https://example.com/api/summary">
+            </div>
+            <div id="send_endpoint_alert" class="alert hidden"></div>
+
+            <p class="hint">
+                Bitrix webhook: создаёт элемент смарт-процесса и прикрепляет файл
+                транскрипции. Требуется включённый саммари.
+            </p>
+        </section>
+
+        <section class="actions">
+            <button id="start" class="primary">Начать обработку →</button>
+        </section>
+
+        <section aria-live="polite" id="progressCard" class="card hidden">
+            <div class="progressHeader">
+                <h2>Обработка</h2>
+                <span id="progressText">0%</span>
+            </div>
+            <div class="bar"><div id="progressBar"></div></div>
+            <div id="currentStep" class="currentStep">В очереди</div>
+            <pre id="logs"></pre>
+
+            <div id="resultLinks" class="resultLinks"></div>
+        </section>
+    </main>
+</div>
+
+<script>
+    window.INITIAL_LOCAL_MODEL = {{ local_model | tojson }};
+    window.INITIAL_CONFIG = {{ config | tojson }};
+    window.AVAILABLE_SEND_ENDPOINTS = {{ send_endpoints | tojson }};
+</script>
+<script src="/static/app.js"></script>
+</body>
+</html>

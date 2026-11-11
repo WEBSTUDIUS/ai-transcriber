@@ -1,0 +1,14 @@
+transcriber:
+  model: distil-large-v3
+  language: ru
+  device: cpu
+  compute_type: int8
+
+llm:
+  endpoint: http://localhost:1234/v1
+  model: qwen3
+
+output:
+  txt: true
+  srt: true
+  json: true

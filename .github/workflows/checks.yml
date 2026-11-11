@@ -1,0 +1,19 @@
+name: Checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  security-and-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Scan reachable history for secrets
+        run: python scripts/check_secrets.py --history HEAD
+      - name: Install lightweight test dependencies (ML engines mocked)
+        run: pip install pytest fastapi httpx python-multipart jinja2 requests psutil rich openai python-dotenv
+      - run: python -m pytest -q
